@@ -100,9 +100,9 @@ const EligibilityForm = () => {
 
   const mapToPayload = (individuals) => {
     
-    const payload = individuals.map(item => {
+    const payload = individuals.map((item, idx) => {
       return {
-              "applicantID": null,
+              "applicantID": idx,
               "name": item.name,
               "address": item.address,
               "dateOfBirth": formatDate(item.dob),
