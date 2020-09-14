@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import DatePicker from "react-datepicker";
  
 import "react-datepicker/dist/react-datepicker.css";
+import Axios from 'axios';
 
 const EligibilityForm = () => {  
   
@@ -89,7 +90,77 @@ const EligibilityForm = () => {
     var array = [...dependentState]; // make a separate copy of the array
     array.splice(e.target.dataset.idx, 1);
     setDependentState([...array]);
-  }
+  };
+
+  const formatDate = (date) => {
+    const offset = date.getTimezoneOffset()
+    var d = new Date(date.getTime() + (offset*60*1000))
+    return d.toISOString().split('T')[0]
+  };
+
+  const mapToPayload = (individuals) => {
+    
+    const payload = individuals.map(item => {
+      return {
+              "applicantID": null,
+              "name": item.name,
+              "address": item.address,
+              "dateOfBirth": formatDate(item.dob),
+              "primaryTaxFiler": item.primaryTaxFiler,
+              "relationship": item.relationship,
+              "income": item.income,
+              "taxDependant": 0.0,
+              //"taxDependant": item.taxDependent,
+              "pregnant": item.pregnant,
+              "pregnancyEndDate": item.pregnant ? formatDate(item.pregnancyEndDate) : null,
+              "ssn": item.ssn,
+              "uscitizen": item.usCitizen
+            };
+    });
+    
+    return payload;
+  };
+
+  const buildPayload = () => {
+    var individuals = [].concat(primaryState, ...dependentState);
+    
+    var familyMembers = mapToPayload(individuals);
+
+    var payload = {
+      'model-namespace': null,
+      'model-name': null,
+      'decision-name':[],
+      'decision-id':[],
+      'decision-service-name':null,
+      'dmn-context': {
+        'ApplicationInput': {
+          'com.myspace.eligibility.Application': {
+            'family':familyMembers,
+            'programName': null
+          }
+
+        }
+      }
+    };
+
+    return payload;
+  };
+
+  // handle Evaluate
+  const handleEvaluate = async (e) => {
+    const payload = buildPayload();
+
+    const response = await Axios.post(
+      'http://rhpam-trial-kieserver-http-demo.apps.rhtnckpmg.rhsledocp.com/services/rest/server/containers/Eligibility/dmn',
+      payload,
+      { headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic YWRtaW5Vc2VyOlJlZEhhdA=='
+      }}
+    );
+    console.log(response.data);
+  };
 
   return (        
     <div class="pure-g">
@@ -426,7 +497,7 @@ const EligibilityForm = () => {
           <div class="pure-u-1">
             <a class="pure-button my-button" onClick={addIndv}>Add Dependent</a>
             <a class="pure-button my-button" value="Reset Form" onClick={resetState}>Reset Form</a>           
-            <a class="pure-button pure-button-primary my-button" >Evaluate</a>
+            <a class="pure-button pure-button-primary my-button" onClick={handleEvaluate}>Evaluate</a>
           </div>
         </div>
         
