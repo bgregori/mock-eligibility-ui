@@ -89,3 +89,10 @@ input[type=number] {
     /* this is a light blue */
 }
 
+.result {
+  border:2px solid green;
+    -moz-border-radius:8px;
+    -webkit-border-radius:8px;	
+    border-radius:8px;
+}
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; 
+import React, { useState, createContext } from 'react'; 
 import DatePicker from "react-datepicker";
  
 import "react-datepicker/dist/react-datepicker.css";
@@ -20,6 +20,8 @@ const EligibilityForm = () => {
     pregnant: false,
     pregnancyEndDate: new Date(),
     relationship: 'parent',
+    result: null,
+    programName: null
   };
   const [primaryState, setPrimaryState] = useState(initPrimaryState);
 
@@ -49,6 +51,7 @@ const EligibilityForm = () => {
     pregnant: false,
     pregnancyEndDate: new Date(),
     relationship: 'parent',
+    result: null
   };
 
   // Initially empty list of dependents
@@ -84,6 +87,10 @@ const EligibilityForm = () => {
     setDependentState([]);
     setPrimaryState(initPrimaryState);
   };
+
+  const resetProgram = () => {
+
+  }
 
   // Remove a specific dependent "row"
   const removeIndv = (e) => {
@@ -136,7 +143,7 @@ const EligibilityForm = () => {
         'ApplicationInput': {
           'com.myspace.eligibility.Application': {
             'family':familyMembers,
-            'programName': null
+            'programName': primaryState.programName
           }
 
         }
@@ -144,6 +151,28 @@ const EligibilityForm = () => {
     };
 
     return payload;
+  };
+
+  const parseResponse = (data) => {
+    console.log(data.msg);
+    var assignPrograms = data.result['dmn-evaluation-result']['dmn-context']['Assign program'];
+    console.log(assignPrograms);
+    const updatedDependents = [...dependentState];
+    assignPrograms.map((item,idx) => {
+      if (item.program != null) {
+        item.program.programName = item.program['Program Code'] + " - " + item.program['Program Name'];
+        item.program.startDate = formatDate(new Date(item.program["Eligible start"]));
+        item.program.endDate = formatDate(new Date(item.program["Eligible end"]));
+      }
+      if (idx==0) {
+        setPrimaryState({...primaryState, result: item.program});
+      } 
+      else {
+        updatedDependents[idx-1].result = item.program;      
+      }
+    });
+    setDependentState(updatedDependents);
+    
   };
 
   // handle Evaluate
@@ -159,7 +188,15 @@ const EligibilityForm = () => {
         'Authorization': 'Basic YWRtaW5Vc2VyOlJlZEhhdA=='
       }}
     );
-    console.log(response.data);
+    if (response.status != 200) {
+      alert("An error occurred!");
+      return;
+    }
+
+    //set state
+    setPrimaryState({...primaryState, programName: "not null"});
+
+    parseResponse(response.data);
   };
 
   return (        
@@ -308,6 +345,37 @@ const EligibilityForm = () => {
             </div>
           )}
         </div>
+        { primaryState.result && (
+          <fieldset class="result">
+          <legend>Eligibility</legend>
+          <div class="pure-g">
+            <div class="pure-u-1 pure-u-md-1-3">
+              <label htmlFor="programName">Program Name</label>
+              <input
+                type="text"
+                value={primaryState.result.programName}
+                readOnly
+              />
+            </div>
+            <div class="pure-u-1 pure-u-md-1-3">
+              <label htmlFor="programName">Program Start Date</label>
+              <input
+                type="text"
+                value={primaryState.result.startDate}
+                readOnly
+              />
+            </div>
+            <div class="pure-u-1 pure-u-md-1-3">
+              <label htmlFor="endDate">Program End Date</label>
+              <input
+                type="text"
+                value={primaryState.result.endDate}
+                readOnly
+              />
+            </div>
+          </div>
+          </fieldset>
+        )}
       </fieldset>
         {
           dependentState.map((val, idx) => {
@@ -489,6 +557,38 @@ const EligibilityForm = () => {
                     <a class="pure-button my-button button-error" data-idx={idx} onClick={removeIndv}>Delete</a>
                   </div>  
                 </div>
+                { dependentState[idx].result && (
+                  <fieldset class="result">
+                  <legend>Eligibility</legend>
+                  <div class="pure-g">
+                    <div class="pure-u-1 pure-u-md-1-3">
+                      <label htmlFor="programName">Program Name</label>
+                      <input
+                        type="text"
+                        value={dependentState[idx].result.programName}
+                        readOnly=""
+                      />
+                    </div>
+                    <div class="pure-u-1 pure-u-md-1-3">
+                      <label htmlFor="programName">Program Start Date</label>
+                      <input
+                        type="text"
+                        value={dependentState[idx].result.startDate}
+                        readOnly=""
+                      />
+                    </div>
+                    <div class="pure-u-1 pure-u-md-1-3">
+                      <label htmlFor="endDate">Program End Date</label>
+                      <input
+                        type="text"
+                        value={dependentState[idx].result.endDate}
+                        readOnly=""
+                      />
+                    </div>
+                  </div>
+                  </fieldset>
+                )}
+
               </fieldset>
             );      
           })
@@ -496,6 +596,7 @@ const EligibilityForm = () => {
         <div class="pure-g">
           <div class="pure-u-1">
             <a class="pure-button my-button" onClick={addIndv}>Add Dependent</a>
+            <a class="pure-button my-button" value="Reset Program Name" onClick={resetProgram}>Reset Program Name</a>   
             <a class="pure-button my-button" value="Reset Form" onClick={resetState}>Reset Form</a>           
             <a class="pure-button pure-button-primary my-button" onClick={handleEvaluate}>Evaluate</a>
           </div>
