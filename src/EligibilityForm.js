@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
  
 import "react-datepicker/dist/react-datepicker.css";
 import Axios from 'axios';
+import { cleanup } from '@testing-library/react';
 
 const EligibilityForm = () => {  
   
@@ -21,6 +22,7 @@ const EligibilityForm = () => {
     pregnancyEndDate: new Date(),
     relationship: 'parent',
     result: null,
+    alreadySubmitted: false,
     programName: null
   };
   const [primaryState, setPrimaryState] = useState(initPrimaryState);
@@ -51,6 +53,7 @@ const EligibilityForm = () => {
     pregnant: false,
     pregnancyEndDate: new Date(),
     relationship: 'parent',
+    alreadySubmitted: false,
     result: null
   };
 
@@ -89,7 +92,9 @@ const EligibilityForm = () => {
   };
 
   const resetProgram = () => {
-
+    var newState = primaryState;
+    newState.programName = null;
+    setPrimaryState(newState);
   }
 
   // Remove a specific dependent "row"
@@ -160,23 +165,47 @@ const EligibilityForm = () => {
     const updatedDependents = [...dependentState];
     assignPrograms.map((item,idx) => {
       if (item.program != null) {
-        item.program.programName = item.program['Program Code'] + " - " + item.program['Program Name'];
-        item.program.startDate = formatDate(new Date(item.program["Eligible start"]));
-        item.program.endDate = formatDate(new Date(item.program["Eligible end"]));
+        if (typeof item.program == "string") {
+          item.program = null;
+          item.alreadySubmitted = true;
+        } else {
+          item.program.programName = item.program['Program Code'] + " - " + item.program['Program Name'];
+          item.program.startDate = formatDate(new Date(item.program["Eligible start"]));
+          item.program.endDate = formatDate(new Date(item.program["Eligible end"]));
+          item.alreadySubmitted = false;
+        }
       }
       if (idx==0) {
-        setPrimaryState({...primaryState, result: item.program});
+        var newState = primaryState;
+             
+        newState.result = item.program;
+        newState.alreadySubmitted = item.alreadySubmitted;
+          
+        setPrimaryState(newState);
       } 
       else {
-        updatedDependents[idx-1].result = item.program;      
+        updatedDependents[idx-1].result = item.program;
+        updatedDependents[idx-1].alreadySubmitted = item.alreadySubmitted;      
       }
     });
     setDependentState(updatedDependents);
     
   };
 
+  const cleanupOldResults = () => {
+    setPrimaryState({...primaryState, result: null});
+    const updatedDependents = [...dependentState];
+    updatedDependents.map((item) => {
+      item.result = null;
+    });
+    setDependentState(updatedDependents);
+  };
+
   // handle Evaluate
   const handleEvaluate = async (e) => {
+    
+    cleanupOldResults();
+    
     const payload = buildPayload();
 
     const response = await Axios.post(
@@ -194,7 +223,9 @@ const EligibilityForm = () => {
     }
 
     //set state
-    setPrimaryState({...primaryState, programName: "not null"});
+    var newState = primaryState;
+    newState.programName = "not null value";
+    setPrimaryState(newState);
 
     parseResponse(response.data);
   };
@@ -345,15 +376,26 @@ const EligibilityForm = () => {
             </div>
           )}
         </div>
-        { primaryState.result && (
+        { (primaryState.result || primaryState.alreadySubmitted) && (
           <fieldset class="result">
-          <legend>Eligibility</legend>
+          <div class="pure-g">
+            <div class="pure-u-1 pure-u-md-1-3">
+              <h3>Primary Eligibility</h3>
+            </div>
+          </div>
+          { primaryState.alreadySubmitted && (
+            <div class="pure-g">
+              <div class="pure-u-1 pure-u-md-1-3">
+                <h3 class="button-error">Already Submitted</h3>
+              </div>         
+            </div>
+          )}          
           <div class="pure-g">
             <div class="pure-u-1 pure-u-md-1-3">
               <label htmlFor="programName">Program Name</label>
               <input
                 type="text"
-                value={primaryState.result.programName}
+                value={primaryState.result ? primaryState.result.programName : null}
                 readOnly
               />
             </div>
@@ -361,7 +403,7 @@ const EligibilityForm = () => {
               <label htmlFor="programName">Program Start Date</label>
               <input
                 type="text"
-                value={primaryState.result.startDate}
+                value={primaryState.result ? primaryState.result.startDate: null}
                 readOnly
               />
             </div>
@@ -369,7 +411,7 @@ const EligibilityForm = () => {
               <label htmlFor="endDate">Program End Date</label>
               <input
                 type="text"
-                value={primaryState.result.endDate}
+                value={primaryState.result ? primaryState.result.endDate: null}
                 readOnly
               />
             </div>
@@ -557,32 +599,43 @@ const EligibilityForm = () => {
                     <a class="pure-button my-button button-error" data-idx={idx} onClick={removeIndv}>Delete</a>
                   </div>  
                 </div>
-                { dependentState[idx].result && (
+                { (dependentState[idx].result || dependentState[idx].alreadySubmitted) && (
                   <fieldset class="result">
-                  <legend>Eligibility</legend>
+                  <div class="pure-g">
+                    <div class="pure-u-1 pure-u-md-1-3">
+                      <h3>{`Dependent #${idx + 1}`} Eligibility</h3>
+                    </div>
+                  </div>
+                  { dependentState[idx].alreadySubmitted && (
+                    <div class="pure-g">
+                      <div class="pure-u-1 pure-u-md-1-3">
+                        <h3 class="button-error">Already Submitted</h3>
+                      </div>         
+                    </div>
+                  )} 
                   <div class="pure-g">
                     <div class="pure-u-1 pure-u-md-1-3">
                       <label htmlFor="programName">Program Name</label>
                       <input
                         type="text"
-                        value={dependentState[idx].result.programName}
-                        readOnly=""
+                        value={dependentState[idx].result ? dependentState[idx].result.programName : null}
+                        readOnly
                       />
                     </div>
                     <div class="pure-u-1 pure-u-md-1-3">
                       <label htmlFor="programName">Program Start Date</label>
                       <input
                         type="text"
-                        value={dependentState[idx].result.startDate}
-                        readOnly=""
+                        value={dependentState[idx].result ? dependentState[idx].result.startDate : null}
+                        readOnly
                       />
                     </div>
                     <div class="pure-u-1 pure-u-md-1-3">
                       <label htmlFor="endDate">Program End Date</label>
                       <input
                         type="text"
-                        value={dependentState[idx].result.endDate}
-                        readOnly=""
+                        value={dependentState[idx].result ? dependentState[idx].result.endDate : null}
+                        readOnly
                       />
                     </div>
                   </div>

@@ -90,9 +90,9 @@ input[type=number] {
 }
 
 .result {
-  border:2px solid green;
-    -moz-border-radius:8px;
-    -webkit-border-radius:8px;	
-    border-radius:8px;
+  border:2px solid green !important;
+  -moz-border-radius:8px;
+  -webkit-border-radius:8px;	
+  border-radius:8px;
 }
 
