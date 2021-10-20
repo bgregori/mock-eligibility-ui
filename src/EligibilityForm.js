@@ -209,7 +209,7 @@ const EligibilityForm = () => {
     const payload = buildPayload();
 
     const response = await Axios.post(
-      'http://rhpam-trial-kieserver-http-demo.apps.rhtnckpmg.rhsledocp.com/services/rest/server/containers/Eligibility/dmn',
+      'http://54.202.28.125:8080/kie-server/services/rest/server/containers/Demo_1.0.0-SNAPSHOT/dmn',
       payload,
       { headers: {
         'Accept': 'application/json',
